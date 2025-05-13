@@ -1,103 +1,178 @@
-import Image from "next/image";
+'use client';
+
+import { Container, Title, Text, SimpleGrid, Card, Image, Group, Badge, Button, TextInput, Select } from '@mantine/core';
+import { useForm } from '@mantine/form';
+import { useState, useEffect } from 'react';
+import { IconSearch, IconPlus } from '@tabler/icons-react';
+import { Listing } from '@/types';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+
+interface SearchForm {
+  keyword: string;
+  category: string;
+  minPrice: string;
+  maxPrice: string;
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const router = useRouter();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  const form = useForm<SearchForm>({
+    initialValues: {
+      keyword: '',
+      category: '',
+      minPrice: '',
+      maxPrice: '',
+    },
+  });
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    if (token && user) {
+      setIsLoggedIn(true);
+    } else {
+      setIsLoggedIn(false);
+    }
+    fetchAllListings();
+  }, []);
+
+  const fetchAllListings = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/listings');
+      if (!response.ok) {
+        throw new Error('Failed to fetch listings');
+      }
+      const data = await response.json();
+      const mapped = data.map((item: any) => ({
+        ...item,
+        images: item.imageUrls || [],
+      }));
+      mapped.sort((a: Listing, b: Listing) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setListings(mapped);
+    } catch (error) {
+      console.error('Error fetching listings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = async (values: SearchForm) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (values.keyword) params.append('keyword', values.keyword);
+      if (values.category) params.append('category', values.category);
+      if (values.minPrice) params.append('minPrice', values.minPrice);
+      if (values.maxPrice) params.append('maxPrice', values.maxPrice);
+
+      const response = await fetch(`/api/listings/search?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error('Failed to search listings');
+      }
+      const data = await response.json();
+      const mapped = data.map((item: any) => ({
+        ...item,
+        images: item.imageUrls || [],
+      }));
+      mapped.sort((a: Listing, b: Listing) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setListings(mapped);
+    } catch (error) {
+      console.error('Error searching listings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleListingClick = (id: string) => {
+    router.push(`/listings/${id}`);
+  };
+
+  return (
+    <Container size="xl" py="xl">
+      <Group justify="space-between" mb="xl">
+        <Title order={1} ta="center">Local Market</Title>
+        {isLoggedIn && (
+          <Button component={Link} href="/listings/create" leftSection={<IconPlus size={18} />}>
+            Create Listing
+          </Button>
+        )}
+      </Group>
+      
+      <Card withBorder p="xl" mb="xl">
+        <form onSubmit={form.onSubmit(handleSearch)}>
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md">
+            <TextInput
+              placeholder="Search listings..."
+              leftSection={<IconSearch size={16} />}
+              {...form.getInputProps('keyword')}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+            <Select
+              placeholder="Category"
+              data={[
+                { value: 'electronics', label: 'Electronics' },
+                { value: 'furniture', label: 'Furniture' },
+                { value: 'clothing', label: 'Clothing' },
+                { value: 'books', label: 'Books' },
+              ]}
+              {...form.getInputProps('category')}
+            />
+            <TextInput
+              placeholder="Min Price"
+              type="number"
+              {...form.getInputProps('minPrice')}
+            />
+            <TextInput
+              placeholder="Max Price"
+              type="number"
+              {...form.getInputProps('maxPrice')}
+            />
+          </SimpleGrid>
+          <Group justify="center" mt="md">
+            <Button type="submit" loading={loading}>
+              Search
+            </Button>
+          </Group>
+        </form>
+      </Card>
+
+      <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="lg">
+        {listings.map((listing) => (
+          <Card key={listing.id} withBorder>
+            <Card.Section>
+              <Image
+                src={listing.images?.[0] || ''}
+                height={200}
+                alt={listing.title}
+              />
+            </Card.Section>
+
+            <Group justify="space-between" mt="md" mb="xs">
+              <Text fw={500} lineClamp={1}>{listing.title}</Text>
+              <Text fw={700} c="blue.7">
+                {Number(listing.price).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+              </Text>
+            </Group>
+
+            <Text size="sm" c="dimmed" lineClamp={2} mb="md">
+              {listing.description}
+            </Text>
+
+            <Button 
+              variant="light" 
+              fullWidth
+              onClick={() => handleListingClick(listing.id)}
+            >
+              View Details
+            </Button>
+          </Card>
+        ))}
+      </SimpleGrid>
+    </Container>
   );
 }
