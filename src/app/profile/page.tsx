@@ -268,7 +268,7 @@ export default function ProfilePage() {
     };
     try {
       const token = localStorage.getItem('token');
-      await api.post(`/user/change-password/${currentUser.id}`, payload , {
+      await api.post(`api/user/change-password/${currentUser.id}`, payload , {
         headers: { Authorization: `Bearer ${token}` },
       });
       notifications.show({ title: 'Success', message: 'Password changed successfully!', color: 'green' });
