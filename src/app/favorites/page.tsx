@@ -16,7 +16,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { Listing } from '@/types';
 import { FavoriteToggle } from '@/components/FavoriteToggle';
-import { motion, AnimatePresence } from 'framer-motion'; 
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function FavoritesPage() {
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -88,11 +88,21 @@ export default function FavoritesPage() {
                 exit={{ opacity: 0, y: -20, height: 0, padding: 0, margin: 0 }}
                 transition={{ duration: 0.4 }}
               >
-                <Card withBorder>
+                <Card
+                  withBorder
+                  shadow="sm"
+                  style={{
+                    height: 400,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                  }}
+                >
                   <Card.Section>
                     <Image
                       src={listing.images?.[0] || ''}
-                      height={200}
+                      height={180}
+                      fit="contain"
                       alt={listing.title}
                     />
                   </Card.Section>
@@ -109,28 +119,30 @@ export default function FavoritesPage() {
                     </Text>
                   </Group>
 
-                  <Text size="sm" c="dimmed" lineClamp={2} mb="md">
+                  <Text size="sm" c="dimmed" lineClamp={2}>
                     {listing.description}
                   </Text>
 
-                  <Group justify="space-between">
-                    <Button
-                      variant="light"
-                      onClick={() => router.push(`/listings/${listing.id}`)}
-                    >
-                      View
-                    </Button>
-                    <FavoriteToggle
-                      listingId={listing.id}
-                      onToggle={(newState) => {
-                        if (!newState) {
-                          setListings((prev) =>
-                            prev.filter((l) => l.id !== listing.id)
-                          );
-                        }
-                      }}
-                    />
-                  </Group>
+                  <div style={{ marginTop: 'auto' }}>
+                    <Group justify="space-between" mt="md">
+                      <Button
+                        variant="light"
+                        onClick={() => router.push(`/listings/${listing.id}`)}
+                      >
+                        View
+                      </Button>
+                      <FavoriteToggle
+                        listingId={listing.id}
+                        onToggle={(newState) => {
+                          if (!newState) {
+                            setListings((prev) =>
+                              prev.filter((l) => l.id !== listing.id)
+                            );
+                          }
+                        }}
+                      />
+                    </Group>
+                  </div>
                 </Card>
               </motion.div>
             ))}

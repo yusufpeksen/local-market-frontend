@@ -1,12 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Container, Title, Text, Card, Group, Button, Alert, SimpleGrid, ActionIcon, Tooltip, Modal, Badge } from '@mantine/core';
+import {
+  Container,
+  Title,
+  Text,
+  Card,
+  Group,
+  Button,
+  Alert,
+  SimpleGrid,
+  Modal,
+  Badge,
+  Loader,
+} from '@mantine/core';
 import { IconEdit, IconTrash, IconAlertCircle } from '@tabler/icons-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { notifications } from '@mantine/notifications';
-import { Listing } from '@/types'; // Assuming your Listing type is here
+import { Listing } from '@/types';
 
 export default function MyListingsPage() {
   const [listings, setListings] = useState<Listing[]>([]);
@@ -23,7 +35,7 @@ export default function MyListingsPage() {
       try {
         const parsedUser = JSON.parse(storedUser);
         setCurrentUser(parsedUser);
-      } catch (e) {
+      } catch {
         setError('Failed to parse user data. Please log in again.');
         router.push('/login');
         return;
@@ -36,30 +48,27 @@ export default function MyListingsPage() {
   }, [router]);
 
   useEffect(() => {
-    if (currentUser && currentUser.id) {
+    if (currentUser?.id) {
       const fetchListings = async () => {
         setLoading(true);
         setError(null);
         try {
           const token = localStorage.getItem('token');
           const response = await fetch(`/api/listings/user/${currentUser.id}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
+            headers: { Authorization: `Bearer ${token}` },
           });
           if (!response.ok) {
             const errorData = await response.text();
             throw new Error(`Failed to fetch listings: ${response.status} ${errorData}`);
           }
           const data = await response.json();
-          const mappedData = data.map((item: any) => ({
+          const mapped = data.map((item: any) => ({
             ...item,
-            images: item.imageUrls || [], // Ensure images field exists
+            images: item.imageUrls || [],
           }));
-          setListings(mappedData);
+          setListings(mapped);
         } catch (err: any) {
           setError(err.message || 'An unknown error occurred.');
-          console.error("Error fetching listings:", err);
         } finally {
           setLoading(false);
         }
@@ -95,7 +104,7 @@ export default function MyListingsPage() {
       const response = await fetch(`/api/listings/delete/${listingToDelete.id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'X-User-Id': currentUser.id,
         },
       });
@@ -110,7 +119,7 @@ export default function MyListingsPage() {
         message: `Listing "${listingToDelete.title}" deleted successfully.`,
         color: 'green',
       });
-      setListings(listings.filter(l => l.id !== listingToDelete.id));
+      setListings(listings.filter((l) => l.id !== listingToDelete.id));
       closeDeleteConfirmModal();
     } catch (err: any) {
       notifications.show({
@@ -118,13 +127,11 @@ export default function MyListingsPage() {
         message: err.message || 'An unknown error occurred',
         color: 'red',
       });
-      console.error("Error deleting listing:", err);
       closeDeleteConfirmModal();
     }
   };
 
   if (!currentUser && !loading) {
-     // This case should ideally be handled by the redirect in useEffect
     return (
       <Container size="md" my={40}>
         <Alert icon={<IconAlertCircle size={16} />} title="Access Denied" color="red">
@@ -137,7 +144,7 @@ export default function MyListingsPage() {
   if (loading) {
     return (
       <Container size="md" my={40}>
-        <Text>Loading your listings...</Text>
+        <Loader />
       </Container>
     );
   }
@@ -154,51 +161,75 @@ export default function MyListingsPage() {
 
   return (
     <Container size="lg" my={40}>
-      <Title order={2} mb="xl" ta="center">My Listings</Title>
+      <Title order={2} mb="xl" ta="center">
+        My Listings
+      </Title>
       {listings.length === 0 ? (
-        <Text ta="center">You haven't created any listings yet. <Link href="/listings/create">Create one now!</Link></Text>
+        <Text ta="center">
+          You haven't created any listings yet.{' '}
+          <Link href="/listings/create">Create one now!</Link>
+        </Text>
       ) : (
         <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
           {listings.map((listing) => (
-            <Card shadow="sm" padding="lg" radius="md" withBorder key={listing.id}>
+            <Card
+              shadow="sm"
+              radius="md"
+              withBorder
+              key={listing.id}
+              style={{
+                height: 440,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+              }}
+            >
               <Card.Section>
-                {/* Basic image display, assuming first image is representative */}
-                <img 
-                  src={listing.images && listing.images.length > 0 ? listing.images[0] : 'https://via.placeholder.com/300x200?text=No+Image'} 
-                  height={160} 
-                  alt={listing.title} 
-                  style={{width: '100%', objectFit: 'cover'}}
+                <img
+                  src={
+                    listing.images?.length > 0
+                      ? listing.images[0]
+                      : 'https://via.placeholder.com/300x200?text=No+Image'
+                  }
+                  height={180}
+                  style={{ width: '100%', objectFit: 'contain', backgroundColor: '#f8f9fa' }}
+                  alt={listing.title}
                 />
               </Card.Section>
 
               <Group justify="space-between" mt="md" mb="xs">
-                <Text fw={500} truncate>{listing.title}</Text>
+                <Text fw={500} lineClamp={1}>
+                  {listing.title}
+                </Text>
                 <Badge color="pink" variant="light">
-                  {Number(listing.price).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+                  {Number(listing.price).toLocaleString('tr-TR', {
+                    style: 'currency',
+                    currency: 'TRY',
+                  })}
                 </Badge>
               </Group>
 
-              <Text size="sm" c="dimmed" lineClamp={3}>
+              <Text size="sm" c="dimmed" lineClamp={2}>
                 {listing.description}
               </Text>
 
               <Group mt="md">
-                <Button 
-                  variant="light" 
-                  color="blue" 
-                  fullWidth 
-                  component={Link} 
+                <Button
+                  variant="light"
+                  color="blue"
+                  fullWidth
+                  component={Link}
                   href={`/listings/edit/${listing.id}`}
-                  leftSection={<IconEdit size={16}/>}
+                  leftSection={<IconEdit size={16} />}
                 >
                   Edit
                 </Button>
-                <Button 
-                  variant="light" 
-                  color="red" 
-                  fullWidth 
+                <Button
+                  variant="light"
+                  color="red"
+                  fullWidth
                   onClick={() => openDeleteConfirmModal(listing)}
-                  leftSection={<IconTrash size={16}/>}
+                  leftSection={<IconTrash size={16} />}
                 >
                   Delete
                 </Button>
@@ -207,13 +238,16 @@ export default function MyListingsPage() {
           ))}
         </SimpleGrid>
       )}
+
       <Modal
         opened={showDeleteConfirm}
         onClose={closeDeleteConfirmModal}
         title="Confirm Deletion"
         centered
       >
-        <Text>Are you sure you want to delete the listing: "{listingToDelete?.title}"?</Text>
+        <Text>
+          Are you sure you want to delete the listing: "{listingToDelete?.title}"?
+        </Text>
         <Group mt="xl" justify="flex-end">
           <Button variant="default" onClick={closeDeleteConfirmModal}>
             Cancel
@@ -225,4 +259,4 @@ export default function MyListingsPage() {
       </Modal>
     </Container>
   );
-} 
+}

@@ -1,8 +1,21 @@
 'use client';
 
-import { Container, Title, Text, SimpleGrid, Card, Image, Group, Badge, Button, TextInput, Select } from '@mantine/core';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import {
+  Container,
+  Title,
+  TextInput,
+  Select,
+  Button,
+  Card,
+  Image,
+  Group,
+  Text,
+  Loader,
+  Stack,
+  SimpleGrid,
+} from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useState, useEffect } from 'react';
 import { IconSearch, IconPlus } from '@tabler/icons-react';
 import { Listing } from '@/types';
 import { useRouter } from 'next/navigation';
@@ -16,10 +29,15 @@ interface SearchForm {
   maxPrice: string;
 }
 
+const PAGE_SIZE = 8;
+
 export default function Home() {
   const [listings, setListings] = useState<Listing[]>([]);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const observerRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
 
   const form = useForm<SearchForm>({
@@ -34,65 +52,65 @@ export default function Home() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     const user = localStorage.getItem('user');
-    if (token && user) {
-      setIsLoggedIn(true);
-    } else {
-      setIsLoggedIn(false);
-    }
-    fetchAllListings();
+    setIsLoggedIn(!!token && !!user);
   }, []);
 
-  const fetchAllListings = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/listings');
-      if (!response.ok) {
-        throw new Error('Failed to fetch listings');
-      }
-      const data = await response.json();
-      const mapped = data.map((item: any) => ({
-        ...item,
-        images: item.imageUrls || [],
-      }));
-      mapped.sort((a: Listing, b: Listing) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setListings(mapped);
-    } catch (error) {
-      console.error('Error fetching listings:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSearch = async (values: SearchForm) => {
+  const fetchListings = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (values.keyword) params.append('keyword', values.keyword);
-      if (values.category) params.append('category', values.category);
-      if (values.minPrice) params.append('minPrice', values.minPrice);
-      if (values.maxPrice) params.append('maxPrice', values.maxPrice);
+      if (form.values.keyword) params.append('keyword', form.values.keyword);
+      if (form.values.category) params.append('category', form.values.category);
+      if (form.values.minPrice) params.append('minPrice', form.values.minPrice);
+      if (form.values.maxPrice) params.append('maxPrice', form.values.maxPrice);
+      params.append('page', page.toString());
+      params.append('size', PAGE_SIZE.toString());
 
-      const response = await fetch(`/api/listings/search?${params.toString()}`);
-      if (!response.ok) {
-        throw new Error('Failed to search listings');
-      }
-      const data = await response.json();
+      const res = await fetch(`/api/listings/search?${params.toString()}`);
+      if (!res.ok) throw new Error('Failed to fetch listings');
+
+      const data = await res.json();
       const mapped = data.map((item: any) => ({
         ...item,
         images: item.imageUrls || [],
       }));
-      mapped.sort((a: Listing, b: Listing) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setListings(mapped);
-    } catch (error) {
-      console.error('Error searching listings:', error);
+
+      setListings((prev) => {
+        const existingIds = new Set(prev.map((l: Listing) => l.id));
+        const newItems = mapped.filter((l: Listing) => !existingIds.has(l.id));
+        return [...prev, ...newItems];
+      });
+
+      setHasMore(mapped.length === PAGE_SIZE);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, form.values]);
 
-  const handleClearFilters = () => {
-    form.reset();
-    fetchAllListings();
+  useEffect(() => {
+    fetchListings();
+  }, [fetchListings]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && hasMore && !loading) {
+        setPage((prev) => prev + 1);
+      }
+    });
+
+    if (observerRef.current) {
+      observer.observe(observerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore, loading]);
+
+  const handleSearch = () => {
+    setListings([]);
+    setPage(0);
+    setHasMore(true);
   };
 
   const handleListingClick = (id: string) => {
@@ -100,21 +118,14 @@ export default function Home() {
   };
 
   return (
-    <Container size="xl" py="xl">
-      <Group justify="space-between" mb="xl">
-        <Title order={1} ta="center">Local Market</Title>
-        {isLoggedIn && (
-          <Button component={Link} href="/listings/create" leftSection={<IconPlus size={18} />}>
-            Create Listing
-          </Button>
-        )}
-      </Group>
-      
-      <Card withBorder p="xl" mb="xl">
+    <Container size="xl" py="xl" style={{ display: 'flex', gap: '2rem' }}>
+      {/* Left Sidebar Filters */}
+      <div style={{ width: '260px', position: 'sticky', top: '80px', alignSelf: 'flex-start' }}>
+        <Title order={3} mb="md">Filters</Title>
         <form onSubmit={form.onSubmit(handleSearch)}>
-          <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md">
+          <Stack>
             <TextInput
-              placeholder="Search listings..."
+              placeholder="Search..."
               leftSection={<IconSearch size={16} />}
               {...form.getInputProps('keyword')}
             />
@@ -128,62 +139,69 @@ export default function Home() {
               ]}
               {...form.getInputProps('category')}
             />
-            <TextInput
-              placeholder="Min Price"
-              type="number"
-              {...form.getInputProps('minPrice')}
-            />
-            <TextInput
-              placeholder="Max Price"
-              type="number"
-              {...form.getInputProps('maxPrice')}
-            />
-          </SimpleGrid>
-          <Group justify="center" mt="md">
-            <Button type="submit" loading={loading}>
-              Search
-            </Button>
-            <Button variant="default" onClick={handleClearFilters} disabled={loading}>
-              Clear Filters
-            </Button>
-          </Group>
+            <TextInput placeholder="Min Price" type="number" {...form.getInputProps('minPrice')} />
+            <TextInput placeholder="Max Price" type="number" {...form.getInputProps('maxPrice')} />
+            <Button type="submit">Search</Button>
+          </Stack>
         </form>
-      </Card>
+      </div>
 
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="lg">
-  {listings.map((listing) => (
-    <Card
-      key={listing.id}
-      withBorder
-      shadow="sm"
-      radius="md"
-      style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
-    >
-      <Card.Section>
-        <Image src={listing.images?.[0] || ''} height={200} alt={listing.title} />
-      </Card.Section>
+      {/* Main Listings Grid */}
+      <div style={{ flex: 1 }}>
+        <Group justify="space-between" mb="xl">
+          <Title>Listings</Title>
+          {isLoggedIn && (
+            <Button component={Link} href="/listings/create" leftSection={<IconPlus size={18} />}>
+              Create Listing
+            </Button>
+          )}
+        </Group>
 
-      <Group justify="space-between" mt="md" mb="xs">
-        <Text fw={500} lineClamp={1}>{listing.title}</Text>
-        <FavoriteToggle listingId={listing.id} />
-      </Group>
+        <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
+          {listings.map((listing) => (
+            <Card
+              key={listing.id}
+              withBorder
+              shadow="sm"
+              style={{
+                height: 400,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+              }}
+            >
+              <Card.Section>
+                <Image
+                  src={listing.images?.[0] || ''}
+                  height={180}
+                  fit="contain"
+                  alt={listing.title}
+                />
+              </Card.Section>
 
-      <Text size="sm" c="dimmed" lineClamp={2} style={{ flexGrow: 1 }}>
-        {listing.description}
-      </Text>
+              <Group justify="space-between" mt="md" mb="xs">
+                <Text fw={500} lineClamp={1}>{listing.title}</Text>
+                <FavoriteToggle listingId={listing.id} />
+              </Group>
 
-      <Button
-        variant="light"
-        fullWidth
-        mt="md"
-        onClick={() => handleListingClick(listing.id)}
-        style={{ marginTop: 'auto' }}
-      >
-        View Details
-      </Button>
-    </Card>
-  ))}
-</SimpleGrid>
+              <Text size="sm" c="dimmed" lineClamp={2}>{listing.description}</Text>
+
+              <div style={{ marginTop: 'auto' }}>
+                <Button
+                  variant="light"
+                  fullWidth
+                  onClick={() => handleListingClick(listing.id)}
+                >
+                  View Details
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </SimpleGrid>
+
+        {loading && <Loader mt="md" />}
+        <div ref={observerRef} style={{ height: 1 }} />
+      </div>
     </Container>
   );
 }
