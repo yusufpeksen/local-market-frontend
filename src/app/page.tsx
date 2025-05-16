@@ -7,6 +7,7 @@ import { IconSearch, IconPlus } from '@tabler/icons-react';
 import { Listing } from '@/types';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { FavoriteToggle } from '@/components/FavoriteToggle';
 
 interface SearchForm {
   keyword: string;
@@ -150,37 +151,39 @@ export default function Home() {
       </Card>
 
       <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="lg">
-        {listings.map((listing) => (
-          <Card key={listing.id} withBorder>
-            <Card.Section>
-              <Image
-                src={listing.images?.[0] || ''}
-                height={200}
-                alt={listing.title}
-              />
-            </Card.Section>
+  {listings.map((listing) => (
+    <Card
+      key={listing.id}
+      withBorder
+      shadow="sm"
+      radius="md"
+      style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+    >
+      <Card.Section>
+        <Image src={listing.images?.[0] || ''} height={200} alt={listing.title} />
+      </Card.Section>
 
-            <Group justify="space-between" mt="md" mb="xs">
-              <Text fw={500} lineClamp={1}>{listing.title}</Text>
-              <Text fw={700} c="blue.7">
-                {Number(listing.price).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
-              </Text>
-            </Group>
+      <Group justify="space-between" mt="md" mb="xs">
+        <Text fw={500} lineClamp={1}>{listing.title}</Text>
+        <FavoriteToggle listingId={listing.id} />
+      </Group>
 
-            <Text size="sm" c="dimmed" lineClamp={2} mb="md">
-              {listing.description}
-            </Text>
+      <Text size="sm" c="dimmed" lineClamp={2} style={{ flexGrow: 1 }}>
+        {listing.description}
+      </Text>
 
-            <Button 
-              variant="light" 
-              fullWidth
-              onClick={() => handleListingClick(listing.id)}
-            >
-              View Details
-            </Button>
-          </Card>
-        ))}
-      </SimpleGrid>
+      <Button
+        variant="light"
+        fullWidth
+        mt="md"
+        onClick={() => handleListingClick(listing.id)}
+        style={{ marginTop: 'auto' }}
+      >
+        View Details
+      </Button>
+    </Card>
+  ))}
+</SimpleGrid>
     </Container>
   );
 }

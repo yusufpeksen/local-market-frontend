@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { IconMessage, IconMail, IconChevronLeft, IconChevronRight, IconPhone, IconMapPin, IconUserCircle } from '@tabler/icons-react';
 import { Listing } from '@/types';
 import { useRouter } from 'next/navigation';
+import { FavoriteToggle } from '@/components/FavoriteToggle';
 
 // Define a type for Seller Information based on UserResponseDTO
 interface SellerInfo {
@@ -293,12 +294,15 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Paper shadow="sm" radius="md" p="xl" style={{ background: '#f8fafd', margin: '0 auto' }}>
               <Stack gap="lg">
-                <Group justify="space-between" align="flex-start" wrap="wrap">
-                  <Title order={2} style={{ fontWeight: 700, flexGrow: 1 }}>{listing.title}</Title>
-                  <Text size="xl" fw={700} c="blue.7" style={{ whiteSpace: 'nowrap' }}>
-                    {Number(listing.price).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
-                  </Text>
-                </Group>
+              <Group justify="space-between" align="flex-start" wrap="wrap">
+  <Title order={2} style={{ fontWeight: 700, flexGrow: 1 }}>{listing.title}</Title>
+  <Group>
+    <FavoriteToggle listingId={listing.id} /> {/* Detaya da ekledik */}
+    <Text size="xl" fw={700} c="blue.7" style={{ whiteSpace: 'nowrap' }}>
+      {Number(listing.price).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+    </Text>
+  </Group>
+</Group>
                 <Table striped highlightOnHover verticalSpacing="sm" style={{ fontSize: 16, borderRadius: 12, overflow: 'hidden' }}>
                   <tbody>
                     <tr><td style={{ fontWeight: 500, width: '30%' }}>İlan Tarihi</td><td>{formattedDate}</td></tr>
