@@ -2,7 +2,7 @@
 
 import { Group, Burger, Button, UnstyledButton, Avatar, Text, Menu, rem } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconChevronDown, IconLogout, IconUser, IconSettings } from '@tabler/icons-react';
+import { IconChevronDown, IconLogout, IconUser, IconSettings, IconListDetails } from '@tabler/icons-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -71,7 +71,9 @@ export function Navbar() {
               <Menu.Target>
                 <UnstyledButton>
                   <Group gap={7}>
-                    <Avatar size={30} radius="xl" />
+                    <Avatar src={user.profileImage || undefined} size={30} radius="xl">
+                      {!user.profileImage && user.username ? user.username.charAt(0).toUpperCase() : null}
+                    </Avatar>
                     <Text fw={500} size="sm" lh={1} mr={3}>
                       {user.username}
                     </Text>
@@ -85,6 +87,12 @@ export function Navbar() {
                   onClick={() => router.push('/profile')}
                 >
                   Profile
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<IconListDetails style={{ width: rem(16), height: rem(16) }} stroke={1.5} />}
+                  onClick={() => router.push('/my-listings')}
+                >
+                  My Listings
                 </Menu.Item>
                 <Menu.Item
                   leftSection={<IconSettings style={{ width: rem(16), height: rem(16) }} stroke={1.5} />}

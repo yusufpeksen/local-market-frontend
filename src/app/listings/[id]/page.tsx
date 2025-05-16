@@ -1,12 +1,27 @@
 'use client';
 
-import { Container, Title, Text, Paper, Group, Button, Stack, Textarea, Avatar, Badge, Image, Divider, Grid, Table, ActionIcon } from '@mantine/core';
+import { Container, Title, Text, Paper, Group, Button, Stack, Textarea, Avatar, Badge, Image, Divider, Grid, Table, ActionIcon, Box } from '@mantine/core';
 import { Carousel } from '@mantine/carousel';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useState, useEffect } from 'react';
-import { IconMessage, IconMail, IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
+import { IconMessage, IconMail, IconChevronLeft, IconChevronRight, IconPhone, IconMapPin, IconUserCircle } from '@tabler/icons-react';
 import { Listing } from '@/types';
+
+// Define a type for Seller Information based on UserResponseDTO
+interface SellerInfo {
+  id: string; // Assuming UUID is string here
+  username: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  city?: string;
+  district?: string;
+  address?: string;
+  phoneNumber?: string;
+  profileImage?: string;
+  createdAt: string; // Assuming LocalDateTime is string here from JSON
+}
 
 interface MessageForm {
   content: string;
@@ -14,11 +29,11 @@ interface MessageForm {
 
 export default function ListingDetailPage({ params }: { params: { id: string } }) {
   const [listing, setListing] = useState<Listing | null>(null);
-  const [sellerInfo, setSellerInfo] = useState<any>(null);
+  const [sellerInfo, setSellerInfo] = useState<SellerInfo | null>(null); // Typed state
   const [loading, setLoading] = useState(false);
   const [loadingSeller, setLoadingSeller] = useState(false);
-  const [messages, setMessages] = useState<any[]>([]);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [messages, setMessages] = useState<any[]>([]); // Keep as any for now if message structure is not defined
+  const [currentUser, setCurrentUser] = useState<any>(null); // Keep as any if user structure for current user is generic
   const [activeSlide, setActiveSlide] = useState(0);
 
   const messageForm = useForm<MessageForm>({
@@ -47,19 +62,15 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
           try {
             const token = localStorage.getItem('token');
             const headers: HeadersInit = {};
-            if (token) {
-              headers['Authorization'] = `Bearer ${token}`;
-            }
+            if (token) headers['Authorization'] = `Bearer ${token}`;
 
-            const sellerResponse = await fetch(`/api/user/profile/${data.sellerId}`, {
-              headers: headers
-            });
+            const sellerResponse = await fetch(`/api/user/profile/${data.sellerId}`, { headers });
 
             if (sellerResponse.ok) {
-              const sellerData = await sellerResponse.json();
+              const sellerData: SellerInfo = await sellerResponse.json(); // Type assertion
               setSellerInfo(sellerData);
             } else {
-              console.error('Failed to fetch seller info, status:', sellerResponse.status, await sellerResponse.text());
+              console.error('Failed to fetch seller info', sellerResponse.status, await sellerResponse.text());
               setSellerInfo(null);
             }
           } catch (sellerError) {
@@ -78,11 +89,8 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
 
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
-      try {
-        setCurrentUser(JSON.parse(storedUser));
-      } catch (e) { /* Hata durumunda currentUser null kalır */ }
+      try { setCurrentUser(JSON.parse(storedUser)); } catch (e) { /* ignore */ }
     }
-
     fetchListingAndSeller();
   }, [params.id]);
 
@@ -147,13 +155,17 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
     day: '2-digit', month: 'long', year: 'numeric'
   });
 
+  const formattedSellerJoinDate = sellerInfo?.createdAt ? new Date(sellerInfo.createdAt).toLocaleDateString('tr-TR', {
+    day: 'numeric', month: 'long', year: 'numeric'
+  }) : 'N/A';
+
   return (
-    <Container size="md" my={40}>
+    <Container size="lg" my={40}>
       <Paper withBorder shadow="md" p={30} radius="lg">
-        <Grid gutter={{ base: 32, md: 72 }}>
+        <Grid gutter={{ base: 32, md: 80, lg: 96 }}>
           {/* Sol: Görseller */}
           <Grid.Col span={{ base: 12, md: 6 }}>
-            <Paper shadow="sm" radius="md" p={0} style={{ background: '#f8fafd', maxWidth: 520, margin: '0 auto' }}>
+            <Paper shadow="sm" radius="md" p={0} style={{ background: '#f8fafd', margin: '0 auto' }}>
               {listing.images && listing.images.length > 0 ? (
                 <Stack gap={8}>
                   <Carousel
@@ -247,48 +259,71 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
 
           {/* Sağ: Detaylar ve Satıcı */}
           <Grid.Col span={{ base: 12, md: 6 }}>
-            <Paper shadow="sm" radius="md" p="xl" style={{ background: '#f8fafd', maxWidth: 520, margin: '0 auto' }}>
-              <Stack gap="md">
+            <Paper shadow="sm" radius="md" p="xl" style={{ background: '#f8fafd', margin: '0 auto' }}>
+              <Stack gap="lg">
                 <Group justify="space-between" align="flex-start" wrap="wrap">
-                  <Title order={2} style={{ fontWeight: 700 }}>{listing.title}</Title>
-                  <Text size="xl" fw={700} c="blue.7">
+                  <Title order={2} style={{ fontWeight: 700, flexGrow: 1 }}>{listing.title}</Title>
+                  <Text size="xl" fw={700} c="blue.7" style={{ whiteSpace: 'nowrap' }}>
                     {Number(listing.price).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
                   </Text>
                 </Group>
-                <Table striped highlightOnHover verticalSpacing="xs" style={{ fontSize: 16, borderRadius: 12, overflow: 'hidden' }}>
+                <Table striped highlightOnHover verticalSpacing="sm" style={{ fontSize: 16, borderRadius: 12, overflow: 'hidden' }}>
                   <tbody>
-                    <tr><td style={{ fontWeight: 500 }}>İlan Tarihi</td><td>{formattedDate}</td></tr>
+                    <tr><td style={{ fontWeight: 500, width: '30%' }}>İlan Tarihi</td><td>{formattedDate}</td></tr>
                     <tr><td style={{ fontWeight: 500 }}>Kategori</td><td>{listing.category}</td></tr>
-                    {/* Örnek ek alanlar, backend'den gelirse ekleyebilirsiniz */}
-                    {/* <tr><td style={{ fontWeight: 500 }}>Marka</td><td>Apple</td></tr> */}
-                    {/* <tr><td style={{ fontWeight: 500 }}>Model</td><td>Macbook Pro</td></tr> */}
-                    {/* <tr><td style={{ fontWeight: 500 }}>RAM</td><td>16 GB</td></tr> */}
-                    {/* <tr><td style={{ fontWeight: 500 }}>Disk</td><td>1 TB SSD</td></tr> */}
-                    {/* <tr><td style={{ fontWeight: 500 }}>Garanti</td><td>Var</td></tr> */}
                     <tr><td style={{ fontWeight: 500 }}>İlan No</td><td>{listing.id}</td></tr>
-                    <tr><td style={{ fontWeight: 500 }}>Kimden</td><td>Sahibinden</td></tr>
-                    {/* Diğer alanlar buraya eklenebilir */}
                   </tbody>
                 </Table>
-                <Paper withBorder shadow="xs" radius="md" p="md" style={{ background: '#f8fafd', maxWidth: 340, margin: '0 auto' }}>
+
+                <Title order={4} mt="lg" mb="xs">Seller Information</Title>
+                <Paper withBorder shadow="xs" radius="md" p="lg" style={{ background: '#fff' }}>
                   {loadingSeller ? (
                     <Text>Loading seller info...</Text>
                   ) : sellerInfo ? (
-                    <Group>
-                      <Avatar src={sellerInfo.profileImageUrl || undefined} size="lg" radius="xl" />
-                      <Stack gap={0}>
-                        <Text fw={600}>{sellerInfo.username || 'User'}</Text>
-                        {/* sellerInfo'dan başka bilgiler de eklenebilir, örneğin kayıt tarihi */}
-                        {/* <Text size="sm" c="dimmed">Joined: {new Date(sellerInfo.createdAt).toLocaleDateString()}</Text> */}
-                      </Stack>
-                    </Group>
+                    <Stack gap="md">
+                      <Group gap="md" align="center">
+                        <Avatar src={sellerInfo.profileImage || undefined} alt={sellerInfo.username} size={60} radius="xl" />
+                        <Box flex={1}>
+                          <Text fw={700} size="lg">
+                            {sellerInfo.firstName && sellerInfo.lastName ? `${sellerInfo.firstName} ${sellerInfo.lastName}` : sellerInfo.username}
+                          </Text>
+                          <Text size="sm" c="dimmed">@{sellerInfo.username}</Text>
+                        </Box>
+                      </Group>
+                      
+                      <Divider />
+
+                      <Group gap="xs">
+                        <IconMapPin size={18} stroke={1.5} />
+                        <Text size="sm">
+                          {sellerInfo.city && sellerInfo.district ? `${sellerInfo.district}, ${sellerInfo.city}` : 'Location not specified'}
+                        </Text>
+                      </Group>
+                      {sellerInfo.address && (
+                        <Group gap="xs">
+                           {/* Intentionally not showing an icon for address to avoid clutter or use a generic one if preferred */}
+                           <Text size="sm" c="dimmed" pl={26}> {sellerInfo.address} </Text> {/* Indent to align with other items */}
+                        </Group>
+                      )}
+                      {sellerInfo.phoneNumber && (
+                        <Group gap="xs">
+                          <IconPhone size={18} stroke={1.5} />
+                          <Text size="sm">{sellerInfo.phoneNumber}</Text>
+                        </Group>
+                      )}
+                      <Group gap="xs">
+                        <IconUserCircle size={18} stroke={1.5} />
+                        <Text size="sm">Joined: {formattedSellerJoinDate}</Text>
+                      </Group>
+                    
+                      {currentUser && listing && currentUser.id !== listing.sellerId && (
+                        <Button fullWidth mt="md" size="md" leftSection={<IconMail size={18} />} onClick={() => { /* TODO: Open message modal or navigate to messages */ }}>
+                          Send Message to Seller
+                        </Button>
+                      )}
+                    </Stack>
                   ) : (
                     <Text>Seller information not available.</Text>
-                  )}
-                  {currentUser && listing && currentUser.id !== listing.sellerId && (
-                    <Button fullWidth mt="md" size="md" leftSection={<IconMail size={18} />} onClick={() => { /* Mesaj modalını aç */ }}>
-                      Send Message to Seller
-                    </Button>
                   )}
                 </Paper>
               </Stack>

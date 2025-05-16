@@ -4,7 +4,11 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
+  city: string;
+  district: string;
+  address: string;
   phoneNumber: string;
+  profileImage?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -75,4 +79,19 @@ export interface ListingSearchRequest {
   category?: string;
   minPrice?: number;
   maxPrice?: number;
+}
+
+export interface UserUpdateRequest {
+  firstName?: string;
+  lastName?: string;
+  city?: string;
+  district?: string;
+  address?: string;
+  phoneNumber?: string;
+  profileImage?: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword?: string;
+  newPassword?: string;
 } 

@@ -38,7 +38,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <MantineProvider theme={theme}>
-          <Notifications position="top-right" />
+          <Notifications position="bottom-right" />
           <Navbar />
           <main style={{ paddingTop: '60px' }}>
         {children}

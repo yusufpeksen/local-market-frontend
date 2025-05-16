@@ -1,6 +1,6 @@
 'use client';
 
-import { Container, Title, TextInput, Textarea, NumberInput, Select, Button, Paper, Group, FileInput, SimpleGrid, Image, ActionIcon, Stack, Text as MantineText } from '@mantine/core';
+import { Container, Title, TextInput, Textarea, NumberInput, Select, Button, Paper, Group, FileInput, SimpleGrid, Image, ActionIcon, Stack, Text as MantineText, Flex } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useRouter } from 'next/navigation';
@@ -10,10 +10,24 @@ import { IconUpload, IconPhoto, IconX } from '@tabler/icons-react';
 interface ListingFormValues {
   title: string;
   description: string;
-  price: number | '';
+  lira: string;
+  kurus: string;
   category: string | null;
   // Resimler dosya olarak alınacak, sonra URL'ye çevrilecek
 }
+
+// Helper to format Lira with thousand separators
+const formatLira = (value: string): string => {
+  if (!value) return '';
+  const numStr = value.replace(/[^\d]/g, '');
+  if (numStr === '') return '';
+  return parseInt(numStr, 10).toLocaleString('tr-TR');
+};
+
+// Helper to unformat Lira (remove separators)
+const unformatLira = (value: string): string => {
+  return value.replace(/[^\d]/g, '');
+};
 
 export default function CreateListingPage() {
   const router = useRouter();
@@ -41,13 +55,25 @@ export default function CreateListingPage() {
     initialValues: {
       title: '',
       description: '',
-      price: '',
+      lira: '',
+      kurus: '',
       category: null,
     },
     validate: {
       title: (value) => (value.trim().length < 3 ? 'Title must be at least 3 characters long' : null),
       description: (value) => (value.trim().length < 10 ? 'Description must be at least 10 characters long' : null),
-      price: (value) => (value === '' || (typeof value === 'number' && value <= 0) ? 'Price must be a positive number' : null),
+      lira: (value) => {
+        const num = parseInt(unformatLira(value), 10);
+        if (isNaN(num) || num < 0) return 'Lira part must be a non-negative number.';
+        return null;
+      },
+      kurus: (value) => {
+        if (value === '') return null; // Kurus can be empty
+        const num = parseInt(value, 10);
+        if (isNaN(num) || num < 0 || num > 99) return 'Kurus must be between 0 and 99.';
+        if (value.length > 2 && value !== '00') return 'Kurus can have at most 2 digits.';
+        return null;
+      },
       category: (value) => (value === null ? 'Category must be selected' : null),
     },
   });
@@ -79,6 +105,17 @@ export default function CreateListingPage() {
     }
     if (files.length === 0) {
       notifications.show({ title: 'Error', message: 'Please upload at least one image', color: 'red' });
+      return;
+    }
+
+    const unformattedLira = unformatLira(values.lira);
+    const kurusValue = values.kurus.padStart(2, '0');
+    const combinedPrice = parseFloat(`${unformattedLira || '0'}.${kurusValue || '00'}`);
+
+    if (isNaN(combinedPrice) || combinedPrice <= 0) {
+      form.setFieldError('lira', 'Price must be a positive amount.');
+      // Optionally set error for kurus as well or a general price error message
+      notifications.show({ title: 'Validation Error', message: 'Price must be a positive amount.', color: 'orange' });
       return;
     }
 
@@ -115,7 +152,7 @@ export default function CreateListingPage() {
     try {
       const listingData = {
         ...values,
-        price: Number(values.price),
+        price: combinedPrice,
         imageUrls: uploadedImageUrls,
       };
 
@@ -188,15 +225,37 @@ export default function CreateListingPage() {
               minRows={4}
               {...form.getInputProps('description')}
             />
-            <NumberInput
-              required
-              label="Price"
-              placeholder="Enter price"
-              min={0.01} // Price must be at least 0.01
-              step={0.01} // Adım değeri
-              decimalSeparator="."
-              {...form.getInputProps('price')}
-            />
+            <MantineText fw={500} size="sm">Price</MantineText>
+            <Flex gap="md" align="flex-start">
+              <TextInput
+                required
+                label="Lira"
+                placeholder="e.g., 1.250"
+                style={{ flex: 1 }}
+                value={formatLira(form.values.lira)}
+                onChange={(event) => {
+                  const unformatted = unformatLira(event.currentTarget.value);
+                  form.setFieldValue('lira', unformatted);
+                }}
+                error={form.errors.lira}
+              />
+              <TextInput
+                label="Kuruş"
+                placeholder="e.g., 50"
+                maxLength={2}
+                style={{ width: '100px' }}
+                {...form.getInputProps('kurus')}
+                onChange={(event) => {
+                    const val = event.currentTarget.value;
+                    if (/^\d*$/.test(val) && val.length <= 2) {
+                        form.setFieldValue('kurus', val);
+                    }
+                }}
+              />
+            </Flex>
+            { (typeof form.errors.lira === 'string' && form.errors.lira.includes('positive amount')) && 
+                <MantineText c="red" size="xs">{form.errors.lira}</MantineText>
+            }
             <Select
               required
               label="Category"

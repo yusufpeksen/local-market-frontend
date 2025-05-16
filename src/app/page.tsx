@@ -89,6 +89,11 @@ export default function Home() {
     }
   };
 
+  const handleClearFilters = () => {
+    form.reset();
+    fetchAllListings();
+  };
+
   const handleListingClick = (id: string) => {
     router.push(`/listings/${id}`);
   };
@@ -136,6 +141,9 @@ export default function Home() {
           <Group justify="center" mt="md">
             <Button type="submit" loading={loading}>
               Search
+            </Button>
+            <Button variant="default" onClick={handleClearFilters} disabled={loading}>
+              Clear Filters
             </Button>
           </Group>
         </form>
