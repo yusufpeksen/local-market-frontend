@@ -7,6 +7,7 @@ import { notifications } from '@mantine/notifications';
 import { useState, useEffect } from 'react';
 import { IconMessage, IconMail, IconChevronLeft, IconChevronRight, IconPhone, IconMapPin, IconUserCircle } from '@tabler/icons-react';
 import { Listing } from '@/types';
+import { useRouter } from 'next/navigation';
 
 // Define a type for Seller Information based on UserResponseDTO
 interface SellerInfo {
@@ -35,6 +36,8 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
   const [messages, setMessages] = useState<any[]>([]); // Keep as any for now if message structure is not defined
   const [currentUser, setCurrentUser] = useState<any>(null); // Keep as any if user structure for current user is generic
   const [activeSlide, setActiveSlide] = useState(0);
+
+  const router = useRouter();
 
   const messageForm = useForm<MessageForm>({
     initialValues: {
@@ -93,6 +96,35 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
     }
     fetchListingAndSeller();
   }, [params.id]);
+
+  const startConversation = async () => {
+    if (!currentUser || !listing?.sellerId) return;
+  
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(
+        `/api/messages/conversation/${listing.id}/${currentUser.id}/${listing.sellerId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+  
+      if (!res.ok) {
+        throw new Error('Failed to get or create conversation');
+      }
+  
+      const conversationId = await res.json();
+      router.push(`/chat/${conversationId}?listingId=${listing.id}&receiverId=${listing.sellerId}`);
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        message: (error as Error).message,
+        color: 'red',
+      });
+    }
+  };
 
   const handleSendMessage = async (values: MessageForm) => {
     if (!currentUser) {
@@ -317,7 +349,8 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                       </Group>
                     
                       {currentUser && listing && currentUser.id !== listing.sellerId && (
-                        <Button fullWidth mt="md" size="md" leftSection={<IconMail size={18} />} onClick={() => { /* TODO: Open message modal or navigate to messages */ }}>
+                        <Button fullWidth mt="md" size="md" leftSection={<IconMail size={18} />}     onClick={startConversation}
+>
                           Send Message to Seller
                         </Button>
                       )}
